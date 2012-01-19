@@ -1,0 +1,15 @@
+# Primary expressions
+main = fun () -> int {
+  a = (1 + 2);
+  b = [1, 2];
+  c = (f = 1, g = 2);
+  d = c;
+  print(a:string + "\n");
+  print(b[0]:string + "\n");
+  print(b[1]:string + "\n");
+  print(c.f:string + "\n");
+  print(c.g:string + "\n");
+  print(d.f:string + "\n");
+  print(d.g:string + "\n");
+  -> 0;
+}

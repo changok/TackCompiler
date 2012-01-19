@@ -1,0 +1,424 @@
+// -*-java-*-*-
+module Tack;
+
+header {
+  import java.util.*;
+  import xtc.util.*;
+  import xtc.tree.Location;
+}
+body {
+  public static final Set<String> KEYWORDS =
+    new HashSet<String>(Arrays.asList(
+      "bool", "else", "false", "for", "fun", "if", "in", "int", "null",
+      "string", "true", "type", "void", "while"));
+  public static final Set<String> IR_KEYWORDS =
+    new HashSet<String>(Arrays.asList(
+      "call", "false", "goto", "ifFalse", "null", "param", "return", "sizeof",
+      "true"));
+  Location l(int yyStart) { return location(yyStart); }
+}
+option parser(TackParser);
+
+// ================ source language ================
+
+// ---------------- top-level ----------------
+public AstNode program =
+    WS f:funDefList EOF {yyValue=new Program(l(yyStart), f);};
+
+public FunType funType1 = WS funType EOF;
+
+FunDef funDef =
+    n:funId EQ FUN t:funType b:blockStmt
+    {yyValue=new FunDef(l(yyStart), n, t, b);};
+
+FunDefListHead funDefList =
+    f:funDef t:funDefListTail {yyValue=new FunDefListHead(l(yyStart), f, t);};
+FunDefListTail funDefListTail =
+    f:funDef t:funDefListTail {yyValue=new FunDefListTail(l(yyStart), f, t);}
+  / /*empty*/ {yyValue=new FunDefListTail(l(yyStart));};
+
+// ---------------- types ----------------
+Type type =
+    arrayType / recordType / boolType / intType / stringType;
+
+ArrayType arrayType =
+    LBRACKET e:type RBRACKET {yyValue=new ArrayType(l(yyStart), e);};
+
+RecordType recordType =
+    LPAREN h:fieldType t:(COMMA fieldType)* RPAREN
+    {yyValue=new RecordType(l(yyStart), new Pair<FieldType>(h, t).list());}
+  / LPAREN /*empty*/ RPAREN
+    {yyValue=new RecordType(l(yyStart), new ArrayList<FieldType>(0));};
+
+FieldType fieldType =
+    f:fieldId COLON t:type {yyValue=new FieldType(l(yyStart), f, t);};
+
+PrimitiveType boolType =
+    BOOL {yyValue=new PrimitiveType(l(yyStart), PrimitiveType.BOOL);};
+
+PrimitiveType intType =
+    INT {yyValue=new PrimitiveType(l(yyStart), PrimitiveType.INT);};
+
+PrimitiveType stringType =
+    STRING {yyValue=new PrimitiveType(l(yyStart), PrimitiveType.STRING);};
+
+FunType funType =
+    f:recordType ARROW r:returnType {yyValue=new FunType(l(yyStart), f, r);};
+
+Type returnType =
+    type / voidType;
+
+PrimitiveType voidType =
+    VOID {yyValue=new PrimitiveType(l(yyStart), PrimitiveType.VOID);};
+
+// ---------------- statements ----------------
+Stmt stmt =
+    varDef / assignStmt / blockStmt / callStmt / forStmt
+  / ifStmt / returnStmt / whileStmt;
+
+VarDef varDef =
+    v:varId EQ r:expr SEMI {yyValue=new VarDef(l(yyStart), v, r);};
+
+AssignStmt assignStmt =
+    v:expr COLONEQ r:expr SEMI {yyValue=new AssignStmt(l(yyStart), v, r);};
+
+BlockStmt blockStmt =
+    LCURLY s:stmtList RCURLY {yyValue=new BlockStmt(l(yyStart), s);};
+
+CallStmt callStmt =
+    e:callExpr SEMI {yyValue=new CallStmt(l(yyStart), e);};
+
+ForStmt forStmt =
+    FOR v:varId IN e:expr b:blockStmt
+    {yyValue=new ForStmt(l(yyStart), v, e, b);};
+
+IfStmt ifStmt =
+    IF c:expr t:blockStmt ELSE e:blockStmt
+    {yyValue=new IfStmt(l(yyStart), c, t, e);}
+  / IF c:expr t:blockStmt {yyValue=new IfStmt(l(yyStart), c, t);};
+
+ReturnStmt returnStmt =
+    ARROW e:expr SEMI {yyValue=new ReturnStmt(l(yyStart), e);}
+  / ARROW SEMI {yyValue=new ReturnStmt(l(yyStart));};
+
+WhileStmt whileStmt =
+    WHILE c:expr b:blockStmt {yyValue=new WhileStmt(l(yyStart), c, b);};
+
+StmtListHead stmtList =
+    f:stmt t:stmtListTail {yyValue=new StmtListHead(l(yyStart), f, t);}
+  / /*empty*/ {yyValue=new StmtListHead(l(yyStart));};
+StmtListTail stmtListTail =
+    n:stmt t:stmtListTail {yyValue=new StmtListTail(l(yyStart), n, t);}
+  / /*empty*/ {yyValue=new StmtListTail(l(yyStart));};
+
+// ---------------- expressions ----------------
+Expr expr =
+    logicOrExpr;
+
+Expr logicOrExpr =
+    l:logicAndExpr t:logicOrExprTail
+    {yyValue=new InfixExprHead(l(yyStart), l, t);};
+InfixExprTail logicOrExprTail =
+    o:LOGIC_OR_OP r:logicAndExpr t:logicOrExprTail
+    {yyValue=new InfixExprTail(l(yyStart), o, r, t);}
+  / /*empty*/ {yyValue=new InfixExprTail(l(yyStart));};
+
+Expr logicAndExpr =
+    l:eqExpr t:logicAndExprTail
+    {yyValue=new InfixExprHead(l(yyStart), l, t);};
+InfixExprTail logicAndExprTail =
+    o:LOGIC_AND_OP r:eqExpr t:logicAndExprTail
+    {yyValue=new InfixExprTail(l(yyStart), o, r, t);}
+  / /*empty*/ {yyValue=new InfixExprTail(l(yyStart));};
+
+Expr eqExpr =
+    l:relExpr t:eqExprTail
+    {yyValue=new InfixExprHead(l(yyStart), l, t);};
+InfixExprTail eqExprTail =
+    o:EQ_OP r:relExpr t:eqExprTail
+    {yyValue=new InfixExprTail(l(yyStart), o, r, t);}
+  / /*empty*/ {yyValue=new InfixExprTail(l(yyStart));};
+
+Expr relExpr =
+    l:addExpr t:relExprTail {yyValue=new InfixExprHead(l(yyStart), l, t);};
+InfixExprTail relExprTail =
+    o:REL_OP r:addExpr t:relExprTail
+    {yyValue=new InfixExprTail(l(yyStart), o, r, t);}
+  / /*empty*/ {yyValue=new InfixExprTail(l(yyStart));};
+
+Expr addExpr =
+    l:multExpr t:addExprTail {yyValue=new InfixExprHead(l(yyStart), l, t);};
+InfixExprTail addExprTail =
+    o:ADD_OP r:multExpr t:addExprTail
+    {yyValue=new InfixExprTail(l(yyStart), o, r, t);}
+  / /*empty*/ {yyValue=new InfixExprTail(l(yyStart));};
+
+Expr multExpr =
+    l:prefixExpr t:multExprTail {yyValue=new InfixExprHead(l(yyStart), l, t);};
+InfixExprTail multExprTail =
+    o:MULT_OP r:prefixExpr t:multExprTail
+    {yyValue=new InfixExprTail(l(yyStart), o, r, t);}
+  / /*empty*/ {yyValue=new InfixExprTail(l(yyStart));};
+
+Expr prefixExpr =
+    o:PREFIX_OP b:prefixExpr { yyValue=new PrefixExpr(l(yyStart), o, b); }
+  / postfixExpr;
+
+Expr postfixExpr =
+    b:primExpr t:postfixExprTail
+    {yyValue=new PostfixExprHead(l(yyStart), b, t);};
+
+PostfixExprTail postfixExprTail =
+    callExprTail
+  / castExprTail
+  / fieldExprTail
+  / subscriptExprTail
+  / emptyPostfixTail;
+
+PostfixExprTail emptyPostfixTail =
+    /*empty*/ {yyValue=new PostfixExprTail(l(yyStart));};
+
+Expr callExpr =
+    f:funId t:callActuals {yyValue=new PostfixExprHead(l(yyStart), f, t);};
+PostfixExprTail callActuals =
+    LPAREN a:exprList RPAREN t:emptyPostfixTail
+    {yyValue=new CallExprTail(l(yyStart), a, t);};
+
+PostfixExprTail callExprTail =
+    LPAREN a:exprList RPAREN t:postfixExprTail
+    {yyValue=new CallExprTail(l(yyStart), a, t);};
+
+PostfixExprTail castExprTail =
+    COLON ty:type tl:postfixExprTail
+    {yyValue=new CastExprTail(l(yyStart), ty, tl);};
+
+PostfixExprTail fieldExprTail =
+    DOT f:fieldId t:postfixExprTail
+    {yyValue=new FieldExprTail(l(yyStart), f, t);};
+
+PostfixExprTail subscriptExprTail =
+    LBRACKET s:expr RBRACKET t:postfixExprTail
+    {yyValue=new SubscriptExprTail(l(yyStart), s, t);};
+
+ExprListHead exprList =
+    f:expr t:exprListTail {yyValue=new ExprListHead(l(yyStart), f, t);}
+  / /*empty*/ {yyValue=new ExprListHead(l(yyStart));};
+ExprListTail exprListTail =
+    COMMA n:expr t:exprListTail {yyValue=new ExprListTail(l(yyStart), n, t);}
+  / /*empty*/ {yyValue=new ExprListTail(l(yyStart));};
+
+Expr primExpr =
+    varId / arrayLit / recordLit / parenExpr
+  / boolLit / intLit / nullLit / stringLit;
+
+Expr parenExpr =
+    LPAREN b:expr RPAREN {yyValue=new ParenExpr(l(yyStart), b);};
+
+// ---------------- literals ----------------
+Expr arrayLit =
+    LBRACKET e:exprList RBRACKET {yyValue=new ArrayLit(l(yyStart), e);};
+
+Expr recordLit =
+    LPAREN f:fieldLitList RPAREN {yyValue=new RecordLit(l(yyStart), f);};
+
+FieldLitListHead fieldLitList =
+    f:fieldLit t:fieldLitListTail
+    {yyValue=new FieldLitListHead(l(yyStart), f, t);}
+  / /*empty*/ {yyValue=new FieldLitListHead(l(yyStart));};
+FieldLitListTail fieldLitListTail =
+    COMMA n:fieldLit t:fieldLitListTail
+    {yyValue=new FieldLitListTail(l(yyStart), n, t);}
+  / /*empty*/ {yyValue=new FieldLitListTail(l(yyStart));};
+
+FieldLit fieldLit =
+    f:fieldId EQ e:expr {yyValue=new FieldLit(l(yyStart), f, e);};
+
+BoolLit boolLit =
+    l:BOOL_LIT WS {yyValue=new BoolLit(l(yyStart), l);};
+
+IntLit intLit =
+    l:INT_LIT WS {yyValue=new IntLit(l(yyStart), l);};
+
+NullLit nullLit =
+    NULL_LIT WS {yyValue=new NullLit(l(yyStart));};
+
+StringLit stringLit =
+    l:STRING_LIT WS {yyValue=new StringLit(l(yyStart), l);};
+
+// ---------------- identifiers ----------------
+FieldId fieldId =
+    i:ID {yyValue=new FieldId(l(yyStart), i);};
+
+FunId funId =
+    i:ID {yyValue=new FunId(l(yyStart), i);};
+
+VarId varId =
+    i:ID {yyValue=new VarId(l(yyStart), i);};
+
+// ================ intermediate representation ================
+
+// ---------------- top-level ----------------
+public Program irProgram =
+    WS f:irFunDef+ EOF {yyValue=new Program(l(yyStart), f.list());};
+
+FunDef irFunDef =
+    n:funId EQ FUN t:funType s:irStmt+
+    {yyValue=new FunDef(l(yyStart), n, t, s.list());};
+
+Instruction irStmt =
+    l:labelColon* i:irInstr SEMI {yyValue=i; i._labels=l.list();};
+
+Label labelColon = l:label COLON;
+
+Label label = i:IR_ID {yyValue=new Label(i);};
+
+// ---------------- addresses ----------------
+Address addr = nameAddr / constAddr / tempAddr / sizeofAddr;
+
+NameAddr nameAddr = i:IR_ID {yyValue=new NameAddr(null, i);};
+
+ConstantAddr constAddr =
+    l:(boolLit / intLit / stringLit / nullLit)
+    {yyValue=new ConstantAddr((Expr)l);};
+
+TempAddr tempAddr = i:IR_ID {yyValue=new TempAddr(null, i);};
+
+SizeofAddr sizeofAddr =
+    SIZEOF LPAREN t:type RPAREN {yyValue=new SizeofAddr(t);};
+
+// ---------------- instructions ----------------
+Instruction irInstr =
+    leftFactoredInstr
+  / uncondJumpInstr / trueJumpInstr / falseJumpInstr / relopJumpInstr
+  / paramInstr / callInstr / returnInstr
+  / arrWriteInstr / recWriteInstr;
+
+Instruction leftFactoredInstr =
+    x:addr EQ
+      ( op:IR_PREFIX_OP y:addr
+        {yyValue=new PrefixInstr(l(yyStart), op, x, y);}
+      / y:addr
+        ( op:IR_INFIX_OP z:addr
+          {yyValue=new InfixInstr(l(yyStart), op, x, y, z);}
+        / COLON z:type
+          {yyValue=new CastInstr(l(yyStart), x, y, z);}
+        / LBRACKET z:addr RBRACKET
+          {yyValue=new ArrReadInstr(l(yyStart), x, y, z);}
+        / DOT z:fieldId
+          { Location loc = l(yyStart);
+            FieldSym sym = new FieldSym(null, new FieldType(loc, z, null));
+            yyValue = new RecReadInstr(loc, x, y, sym); }
+        / /*empty*/
+          {yyValue=new CopyInstr(l(yyStart), x, y);}
+        )
+      );
+
+ArrWriteInstr arrWriteInstr =
+    b:addr LBRACKET s:addr RBRACKET EQ i:addr
+    {yyValue=new ArrWriteInstr(l(yyStart), b, s, i);};
+
+RecWriteInstr recWriteInstr =
+    b:addr DOT f:fieldId EQ i:addr
+    { Location loc = l(yyStart);
+      FieldSym sym = new FieldSym(null, new FieldType(loc, f, null));
+      yyValue = new RecWriteInstr(loc, b, sym, i); };
+
+UncondJumpInstr uncondJumpInstr =
+    GOTO t:label
+    {yyValue=new UncondJumpInstr(l(yyStart), t);};
+
+TrueJumpInstr trueJumpInstr =
+    IF c:addr GOTO t:label
+    {yyValue=new TrueJumpInstr(l(yyStart), c, t);};
+
+FalseJumpInstr falseJumpInstr =
+    IFFALSE c:addr GOTO t:label
+    {yyValue=new FalseJumpInstr(l(yyStart), c, t);};
+
+RelopJumpInstr relopJumpInstr =
+    IF l:addr o:IR_REL_OP r:addr GOTO t:label
+    {yyValue=new RelopJumpInstr(l(yyStart), o, l, r, t);};
+
+ParamInstr paramInstr =
+    PARAM LBRACKET idx:INT_LIT WS COLON art:INT_LIT WS RBRACKET EQ in:addr
+    {yyValue=new ParamInstr(l(yyStart), in,
+                            Integer.valueOf(idx), Integer.valueOf(art));};
+
+CallInstr callInstr =
+    CALL f:funId COLON a:INT_LIT WS
+    {yyValue=new CallInstr(l(yyStart), null,
+               new FunSym(null, new FunDef(null, f, null, (BlockStmt)null)),
+               Integer.valueOf(a));}
+  / o:addr EQ CALL f:funId COLON a:INT_LIT WS
+    {yyValue=new CallInstr(l(yyStart), o,
+               new FunSym(null, new FunDef(null, f, null, (BlockStmt)null)),
+               Integer.valueOf(a));};
+
+ReturnInstr returnInstr =
+    RETURN v:addr
+    {yyValue=new ReturnInstr(l(yyStart), v);}
+  / RETURN
+    {yyValue=new ReturnInstr(l(yyStart), null);};
+
+// ================ lexical ================
+String ID = i:ID_INTERNAL WS &{!KEYWORDS.contains(i)};
+String ID_INTERNAL = [a-zA-Z_] [a-zA-Z_0-9]*;
+String BOOL_LIT = "true" / "false";
+String INT_LIT = '0' / [1-9] [0-9]*;
+String NULL_LIT = "null";
+String STRING_LIT = '"' ('\\' _ / !('"' / '\\') _)* '"';
+
+// ---------------- Tack keywords ----------------
+void BOOL = "bool" WS;
+void ELSE = "else" WS;
+void FOR = "for" WS;
+void FUN = "fun" WS;
+void IF = "if" WS;
+void IN = "in" WS;
+void INT = "int" WS;
+void STRING = "string" WS;
+void VOID = "void" WS;
+void WHILE = "while" WS;
+
+// ---------------- IR keywords ----------------
+String IR_ID = i:ID_INTERNAL WS &{!IR_KEYWORDS.contains(i)};
+
+void CALL = "call" WS;
+void GOTO = "goto" WS;
+void IFFALSE = "ifFalse" WS;
+void PARAM = "param" WS;
+void RETURN = "return" WS;
+void SIZEOF = "sizeof" WS;
+
+// ---------------- operators and punctuation ----------------
+void ARROW = "->" WS;
+void DOT = "." WS;
+void COLON = ":" WS;
+void COLONEQ = ":=" WS;
+void COMMA = "," WS;
+void EQ = "=" WS;
+void SEMI = ";" WS;
+void LBRACKET = "[" WS;
+void RBRACKET = "]" WS;
+void LCURLY = "{" WS;
+void RCURLY = "}" WS;
+void LPAREN = "(" WS;
+void RPAREN = ")" WS;
+
+String LOGIC_OR_OP = "||" WS;
+String LOGIC_AND_OP = "&&" WS;
+String EQ_OP = "==" WS / "!=" WS;
+String REL_OP = "<=" WS / "<" WS / ">=" WS / ">" WS;
+String ADD_OP = "+" WS / "-" WS;
+String MULT_OP = "*" WS / "/" WS / "%" WS;
+String PREFIX_OP = "!" WS / "-" WS;
+
+String IR_INFIX_OP = ("+" / "-" / "*" / "/" / "%") WS;
+String IR_PREFIX_OP = "-" WS;
+String IR_REL_OP = ("==" / "!=" / "<=" / "<" / ">=" / ">") WS;
+
+// ---------------- whitespace ----------------
+void WS = ([ \t\f] / NEWLINE / COMMENT)*;
+void NEWLINE = '\r' '\n' / '\r' / '\n';
+void COMMENT = '#' ( ![\n\r] _ )* (NEWLINE / &EOF);
+void EOF = !_;

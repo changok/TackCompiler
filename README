@@ -1,0 +1,36 @@
+Compiler Construction CSCI-GA.2130-001 Fall 2011 pr5
+
+Changok Kim
+ck1334@nyu.edu
+
+Project Milestone 5: Assembly generator
+
+The assignment was here:
+
+    http://cs.nyu.edu/courses/fall11/CSCI-GA.2130-001/pr4.pdf
+
+The new files in these solutions, compared to the pr4 solutions, are:
+
+    SBGenerator.java        # preparing offset and symboltable before generating assembly
+    SBPrinter.java          # visit each nodes and print out assembly
+    Stack.java              # stack layout for calling convention
+
+To compile and run, do the following:
+
+0 test file should be in test/ folder to use these make features
+
+1 Generate All Assembly codes
+
+    make bsall
+
+2 Generate All Executable codes
+
+    make exeall
+
+3 Run All Executable codes
+
+    make runall
+
+4 Clean up intermediate files:
+
+    make cleanall

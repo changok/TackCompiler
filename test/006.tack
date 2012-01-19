@@ -1,0 +1,12 @@
+# Prefix expressions
+main = fun () -> int {
+  a = true;
+  b = !a;
+  c = 1;
+  d = -c;
+  print(a:string + "\n");
+  print(b:string + "\n");
+  print(c:string + "\n");
+  print(d:string + "\n");
+  -> 0;
+}

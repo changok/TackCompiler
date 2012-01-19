@@ -1,0 +1,14 @@
+# Composite types
+main = fun () -> int {
+  a = [1, 2] : [int];
+  b = (x=1, y="Y") : (x:int, y:string);
+  c = (z=[1,2,3], q=(r=[4,5], s=6)) : (z:[int], q:(r:[int], s:int));
+  d = null : (x:int, y:string);
+#answer : 1, 2, 1, Y
+  print(a[0]:string + ", " + a[1]:string + ", " + b.x:string + ", " + b.y + "\n");
+#answer : 1, 2, 3
+  print(c.z[0]:string + ", " + c.z[1]:string + ", " + c.z[2]:string +"\n");
+#answer : 4, 5, 6
+  print(c.q.r[0]:string + ", " + c.q.r[1]:string + ", " + c.q.s:string +"\n");
+  -> 0;
+}

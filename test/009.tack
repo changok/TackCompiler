@@ -1,0 +1,9 @@
+# Primitive types
+main = fun () -> int {
+  a = 1 : int;
+  b = "x" : string;
+  c = true : bool;
+# answer: 1, x, 1
+  print(a:string + ", " + b + ", " + c:string);
+  -> 0;
+}

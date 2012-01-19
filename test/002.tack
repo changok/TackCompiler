@@ -1,0 +1,18 @@
+# Primitive literals
+main = fun () -> int {
+  a = true;
+  b = false;
+  c = 0;
+  d = 123;
+  e = "";
+  f = "hello";
+  g = "\"Hello\"\n";
+  print(a:string);
+  print(b:string);
+  print(c:string);
+  print(d:string);
+  print(e:string);
+  print(f:string);
+  print(g:string);
+  -> 0;
+}

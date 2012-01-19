@@ -1,0 +1,7 @@
+# Addition and multiplication
+main = fun () -> int {
+	i = [1,2];
+	j = ( a = 1, b = (f = 2, g = 3));
+	a = j.b.f;
+  -> 0;
+}

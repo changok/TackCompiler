@@ -1,0 +1,14 @@
+# Infix expressions
+main = fun () -> int {
+  a = 1;
+  b = a < 0 || a > 10;
+  c = a >= 0 && a <= 10;
+  d = a + 1 < 2 * a - 1 && a != 9;
+  e = a / 7 + a % 5;
+  print(a:string+"\n"); #1
+  print(b:string+ "\n"); #0
+  print(c:string+"\n"); #1
+  print(d:string+"\n"); #0
+  print(e:string+"\n"); #1
+  -> 0;
+}

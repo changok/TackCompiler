@@ -1,0 +1,25 @@
+# Postfix expressions
+main = fun () -> int {
+  a = length("a" + "b");
+  b = 12 : string;
+  c = (x = 1, y = 2);
+  d = c.x;
+  e = [1, 2];
+  f = e[0];
+  g = [ (x = 1, y = 2), (x = 3, y = 4) ];
+  h = length(g[1].y : string);
+  print(h + "\n");	 	#1
+  print(a:string + "\n");	#2
+  print(b + "\n");		#12
+  print(c.x:string + "\n");	#1
+  print(c.y:string + "\n");	#2
+  print(d:string + "\n");	#1
+  print(e[0]:string + "\n");	#1
+  print(e[1]:string + "\n");	#2
+  print(f:string + "\n");	#1
+  print(g[0].x:string + "\n");	#1
+  print(g[0].y:string + "\n");	#2
+  print(g[1].x:string + "\n");	#3
+  print(g[1].y:string + "\n");	#4
+  -> 0;
+}
